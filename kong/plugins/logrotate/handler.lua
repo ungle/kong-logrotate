@@ -20,8 +20,10 @@ local shell = require("resty.shell")
 
 local periods_seconds = {
     "minute" = 60,
-    "hour" =3600,
-    "day" = 
+    "hour" = 3600,
+    "day" = 86400,
+    "month" = 2628000
+    "year" = 31536000
 }
 local dbless = kong.configuration.database == "off"
 local hybrid_mode = kong.configuration.role == "control_plane" or
