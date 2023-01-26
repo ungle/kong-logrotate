@@ -205,6 +205,10 @@ function LogrotateHandler:init_worker(plugin_conf)
 end
 
 function LogrotateHandler:log(plugin_conf)
+    if ngx.worker.id() ~=0 then 
+        return
+    end
+
     local rotate_table = {}
     for i,v in ipairs(plugin_conf.log_paths) do
         if file_size(v) > plugin_conf.max_size then 
