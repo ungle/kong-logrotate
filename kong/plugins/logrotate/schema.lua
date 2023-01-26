@@ -23,11 +23,11 @@ local schema = {
             type = "record",
             fields = {
 
-                { rotate_interval = {type = "integer", gt = 0 , default = 1}}
+                { rotate_interval = {type = "integer", gt = 0 , default = 1}},
                 { rotate_interval_unit =  {type = "string",default = "day",one_of = PERIODS } },
                 { log_paths =  { 
                 type = "set", 
-                default = { "/usr/local/kong/logs/access.log","/usr/local/kong/logs/error.log" }, 
+                default = { "/usr/local/kong/logs/access.log","/usr/local/kong/logs/error.log","/usr/local/kong/logs/admin_access.log" }, 
                 elements = { type = "string" } 
             }},
                 { max_kept =  { type = "integer", gt = 0 , default = 1 }, },

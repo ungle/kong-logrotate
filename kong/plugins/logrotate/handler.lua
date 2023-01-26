@@ -19,12 +19,13 @@ local signal = require("resty.signal")
 local shell = require("resty.shell")
 
 local periods_seconds = {
-    "minute" = 60,
-    "hour" = 3600,
-    "day" = 86400,
-    "month" = 2628000
-    "year" = 31536000
+    minute = 60,
+    hour = 3600,
+    day = 86400,
+    month = 2628000,
+    year = 31536000
 }
+
 local dbless = kong.configuration.database == "off"
 local hybrid_mode = kong.configuration.role == "control_plane" or
                     kong.configuration.role == "data_plane"
@@ -47,9 +48,7 @@ end
 local function sort_oldest(a,b)
     local mod_a = lfs.attributes(a)["modification"]
     local mod_b = lfs.attributes(b)["modification"]
-
     return mod_a < mod_b
-
 end
 
 local function remove_oldest_files(file_path,max_kept)
@@ -81,6 +80,7 @@ local function remove_oldest_files(file_path,max_kept)
         ok, err = os_remove(file_table[i])
         if err then 
             kong.log.err("remove log file: ", new_file," failed: ", err)
+        end
 
     end
 
@@ -201,6 +201,7 @@ function LogrotateHandler:init_worker(plugin_conf)
         if not dbless then
             timer.every(wait,refresh_timer)
         end
+    end
 
 end
 
