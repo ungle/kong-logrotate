@@ -31,7 +31,7 @@ local schema = {
                 elements = { type = "string" } 
             }},
                 { max_kept =  { type = "integer", gt = 0 , default = 1 }, },
-                { max_size =  { type = "integer", gt = 0 }, },
+                { max_size =  { type = "integer", gt = 0, default = 104857600 }, },
                 { compression = { type = "boolean", required = true, default = false }, },
             },
         },

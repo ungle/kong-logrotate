@@ -150,7 +150,7 @@ end
 local function get_plugin_config()
     for plugin, err in kong.db.plugins:each(1000) do
     if err then
-      kong.log.warn("error fetching plugin: ", err)
+      kong.log.warn("error at fetching logrotate plugin config: ", err)
     end
 
     if plugin.name == "logrotate" then
@@ -183,32 +183,12 @@ local function refresh_timer(premature)
 
 end
 
-
-
-
-function LogrotateHandler:init_worker(plugin_conf)
-    local rotate_period = plugin_conf.rotate_interval * periods_seconds[plugin_conf.rotate_interval_unit]
-
-    if ngx.worker.id() ==0 then
-        timer.every(rotate_period, rotate_file,plugin_conf,rotate_period)
-        skip_timers[rotate_period] = false
-
-        local wait = kong.configuration.db_update_frequency
-        if hybrid_mode then 
-            wait = wait * 2
-        end
-
-        if not dbless then
-            timer.every(wait,refresh_timer)
-        end
+local function scan_size(premature,plugin_conf)
+    if premature then
+       return
     end
 
-end
-
-function LogrotateHandler:log(plugin_conf)
-    if ngx.worker.id() ~=0 then 
-        return
-    end
+    kong.log.info("start scanning size")
 
     local rotate_table = {}
     for i,v in ipairs(plugin_conf.log_paths) do
@@ -218,8 +198,50 @@ function LogrotateHandler:log(plugin_conf)
     end
 
     if next(rotate_table) ~= nil then
+        kong.log.notice("start rotating oversized files: ", rotate_table)
         rotate_file(rotate_table,plugin_conf.compression,plugin_conf.max_kept)
     end
+
+end
+
+local function load_timer(premature,wait)
+    if premature then
+       return
+    end
+
+    local plugin_conf = get_plugin_config()
+
+    local rotate_period = plugin_conf.rotate_interval * periods_seconds[plugin_conf.rotate_interval_unit]
+    timer.every(rotate_period, rotate_file,plugin_conf,rotate_period)
+    skip_timers[rotate_period] = false
+
+    timer.every(wait,scan_size,plugin_conf)
+
+
+    if not dbless then
+        timer.every(wait,refresh_timer)
+    end
+end
+
+
+
+
+function LogrotateHandler:init_worker()
+
+    if(ngx.worker.id() == 0) then
+
+        local wait = 3
+        if not dbless then 
+            wait = kong.configuration.db_update_frequency
+        end
+
+        if hybrid_mode then 
+            wait = wait * 2
+        end
+        timer.at(wait,load_timer,wait)
+
+    end
+
 end
 
 return LogrotateHandler
