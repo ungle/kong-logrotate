@@ -29,8 +29,7 @@ local periods_seconds = {
 local dbless = kong.configuration.database == "off"
 local hybrid_mode = kong.configuration.role == "control_plane" or
                     kong.configuration.role == "data_plane"
-
-local skip_timers = {}
+local rotate_init_time
 
 local LogrotateHandler = {
     PRIORITY = -1, 
@@ -111,7 +110,7 @@ end
 
 
 local function rename_file(file_path,compression)
-    local new_path = file_path .. os_date("%Y%m%d%H%M%S", now_time)
+    local new_path = file_path.."-" .. os_date("%Y%m%d%H%M%S", ngx.time())
 
     local ok, err = os_rename(file_path, new_path)
     if not ok then
@@ -136,15 +135,6 @@ local function rotate_file(log_paths,compression,max_kept)
     end
 
 
-end 
-
-local function rotate(premature,conf,name)
-    if premature or skip_timers[name] == true  then 
-        return
-    end
-
-    rotate_file(conf.log_paths,conf.compression,conf.max_kept)
-
 end
 
 local function get_plugin_config()
@@ -159,27 +149,13 @@ local function get_plugin_config()
   end
 end
 
-local function refresh_timer(premature)
-    if premature then
-       return
+local function rotate(premature,conf,name)
+    if premature then 
+        return
     end
 
-    plugin_conf = get_plugin_config()
 
-    local rotate_period = plugin_conf.rotate_interval * periods_seconds[plugin_conf.rotate_interval_unit]
-
-    if not skip_timers[rotate_period_name]  then
-        for k, v in pairs(skip_timers) do
-            if  v == false then
-                skip_timers[k] = true
-                break
-            end
-        end
-
-        skip_timers[rotate_period] = false
-        timer.every(rotate_period, rotate,plugin_conf,rotate_period)
-
-    end
+    rotate_file(conf.log_paths,conf.compression,conf.max_kept)
 
 end
 
@@ -187,6 +163,13 @@ local function scan_size(premature,plugin_conf)
     if premature then
        return
     end
+
+    local rotate_period = plugin_conf.rotate_interval * periods_seconds[plugin_conf.rotate_interval_unit]
+
+    if((ngx.time() - rotate_init_time) % rotate_period < 600) then
+        return
+    end
+
 
     kong.log.info("start scanning size")
 
@@ -210,17 +193,12 @@ local function load_timer(premature,wait)
     end
 
     local plugin_conf = get_plugin_config()
-
     local rotate_period = plugin_conf.rotate_interval * periods_seconds[plugin_conf.rotate_interval_unit]
-    timer.every(rotate_period, rotate_file,plugin_conf,rotate_period)
-    skip_timers[rotate_period] = false
+    rotate_init_time = os.time()
 
+    timer.every(rotate_period,rotate,plugin_conf)
     timer.every(wait,scan_size,plugin_conf)
 
-
-    if not dbless then
-        timer.every(wait,refresh_timer)
-    end
 end
 
 
