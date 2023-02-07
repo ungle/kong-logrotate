@@ -15,9 +15,11 @@ local PERIODS = {"minute", "hour", "day", "month", "year" }
 local schema = {
     name = "logrotate",
     fields = {
-
+        -- Only the global plugin is allowed
         { consumer = typedefs.no_consumer },
-        { protocols = typedefs.protocols_http },
+        { route = typedefs.no_route },
+        { service = typedefs.no_service },
+        { protocols = typedefs.protocols },
         { config = {
 
             type = "record",
